@@ -1,0 +1,39 @@
+name: Deploy application to Google Cloud Run
+on:
+  workflow_run:
+    workflows: ["dockerImage"]
+    types:
+        - completed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+############################# CHECK IF NEEDED ########################
+    permissions:  # Korrekte Berechtigungen für den Job
+      contents: read
+      id-token: write
+######################################################################
+
+    steps:
+      -name: Checkout repository
+       uses: actions/checkout@v4
+
+      -name: Authenticate to Google Cloud (with workload identity federation)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: '${{secrets.WIF_PROVIDER}}'
+          service_account_email: '${{secrets.WIF_SERVICE_ACCOUNTS}}'
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: hs-heilbronn-devsecops
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2 
+        with:
+          service: hs-heilbronn-devsecops-mjmteam/note-api
+          image: ghcr.io/hs-heilbronn-devsecops-mjmteam/note-api:latest
+          region: europe-west3 #Frankfurt ?
+          env_vars: BACKEND=memory
